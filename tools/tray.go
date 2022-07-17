@@ -147,7 +147,9 @@ func (t *tray) autoConnectHandler(autoConnect *systray.MenuItem, loginEventChan 
 		autoConnect.SetTitle(t.getAutoConnectTitle())
 		Notify("Kasa Notify", notifyMsg, zenity.InfoIcon)
 		if autoConnect.Checked() {
-			loginEventChan <- true
+			if (len(t.devicesMenu)) == 0 {
+				loginEventChan <- true
+			}
 		}
 	}
 }
@@ -179,60 +181,62 @@ func (t *tray) createDevicesMenu(devices []kasa.Device) {
 		}
 	}
 	for _, dMenu := range t.devicesMenu {
-		go func(dMenu *deviceMenu) {
-			localCh := getSubmenuClickEvent(dMenu.submenu)
-			for {
-				sm := <-localCh
-				switch sm.id {
-				case "on":
-					log.Println("Turning on")
-					err := dMenu.device.TurnOn()
-					if err != nil {
-						Notify("Kasa Error", err.Error(), zenity.ErrorIcon)
-						continue
-					}
-					msg := fmt.Sprintf("%s now turned On with %d%% brightness", dMenu.device.Alias(), dMenu.device.Brightness())
-					Notify("Kasa Notify", msg, zenity.InfoIcon)
-					log.Println("Turned on")
-				case "off":
-					log.Println("Turning off")
-					err := dMenu.device.TurnOff()
-					if err != nil {
-						Notify("Kasa Error", err.Error(), zenity.ErrorIcon)
-						continue
-					}
-					msg := fmt.Sprintf("%s now turned Off", dMenu.device.Alias())
-					Notify("Kasa Notify", msg, zenity.InfoIcon)
-					log.Println("Turned off")
-				default:
-					// Set preferred state
-					log.Println("Setting preferred state")
-					idx, err := strconv.ParseInt(sm.id, 10, 64)
-					if err != nil {
-						Notify("Kasa Error", err.Error(), zenity.ErrorIcon)
-						continue
-					}
-					err = dMenu.device.SetPreferredState(int(idx))
-					if err != nil {
-						Notify("Kasa Error", err.Error(), zenity.ErrorIcon)
-						continue
-					}
-					msg := fmt.Sprintf("%s now set to brightness %d%%", dMenu.device.Alias(), dMenu.device.Brightness())
-					Notify("Kasa Notify", msg, zenity.InfoIcon)
-					log.Println("Set preferred state")
-				}
-				for _, s := range dMenu.submenu {
-					if s.id == "on" && dMenu.device.IsConnected() {
-						s.menu.Disable()
-					} else if s.id == "off" && dMenu.device.IsDisconnected() {
-						s.menu.Disable()
-					} else {
-						s.menu.Enable()
-					}
-				}
-				dMenu.menu.SetTitle(dMenu.device.HumanName())
+		go deviceMenuHandler(dMenu)
+	}
+}
+
+func deviceMenuHandler(dMenu *deviceMenu) {
+	localCh := getSubmenuClickEvent(dMenu.submenu)
+	for {
+		sm := <-localCh
+		switch sm.id {
+		case "on":
+			log.Println("Turning on")
+			err := dMenu.device.TurnOn()
+			if err != nil {
+				Notify("Kasa Error", err.Error(), zenity.ErrorIcon)
+				continue
 			}
-		}(dMenu)
+			msg := fmt.Sprintf("%s now turned On with %d%% brightness", dMenu.device.Alias(), dMenu.device.Brightness())
+			Notify("Kasa Notify", msg, zenity.InfoIcon)
+			log.Println("Turned on")
+		case "off":
+			log.Println("Turning off")
+			err := dMenu.device.TurnOff()
+			if err != nil {
+				Notify("Kasa Error", err.Error(), zenity.ErrorIcon)
+				continue
+			}
+			msg := fmt.Sprintf("%s now turned Off", dMenu.device.Alias())
+			Notify("Kasa Notify", msg, zenity.InfoIcon)
+			log.Println("Turned off")
+		default:
+			// Set preferred state
+			log.Println("Setting preferred state")
+			idx, err := strconv.ParseInt(sm.id, 10, 64)
+			if err != nil {
+				Notify("Kasa Error", err.Error(), zenity.ErrorIcon)
+				continue
+			}
+			err = dMenu.device.SetPreferredState(int(idx))
+			if err != nil {
+				Notify("Kasa Error", err.Error(), zenity.ErrorIcon)
+				continue
+			}
+			msg := fmt.Sprintf("%s now set to brightness %d%%", dMenu.device.Alias(), dMenu.device.Brightness())
+			Notify("Kasa Notify", msg, zenity.InfoIcon)
+			log.Println("Set preferred state")
+		}
+		for _, s := range dMenu.submenu {
+			if s.id == "on" && dMenu.device.IsConnected() {
+				s.menu.Disable()
+			} else if s.id == "off" && dMenu.device.IsDisconnected() {
+				s.menu.Disable()
+			} else {
+				s.menu.Enable()
+			}
+		}
+		dMenu.menu.SetTitle(dMenu.device.HumanName())
 	}
 }
 
