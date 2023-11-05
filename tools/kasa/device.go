@@ -3,8 +3,9 @@ package kasa
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 )
@@ -227,7 +228,7 @@ func (d *TpLinkDevice) passthroughRequest(command map[string]interface{}) (map[s
 		return nil, err
 	}
 	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -236,6 +237,11 @@ func (d *TpLinkDevice) passthroughRequest(command map[string]interface{}) (map[s
 	if err != nil {
 		return nil, err
 	}
+
+	if res.ErrorCode != 0 {
+		return nil, errors.New(res.Message)
+	}
+
 	responseData := res.Result.(map[string]interface{})["responseData"]
 	if responseData != "" {
 		var data map[string]interface{}

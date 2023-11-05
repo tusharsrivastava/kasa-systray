@@ -3,7 +3,7 @@ package kasa
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 )
@@ -43,7 +43,7 @@ func baseRequest(link TPLink, requestBody map[string]interface{}) (interface{}, 
 		return nil, err
 	}
 	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
 	}

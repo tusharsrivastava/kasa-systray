@@ -3,11 +3,8 @@ package kasa
 type Response struct {
 	ErrorCode int         `json:"error_code"`
 	Result    interface{} `json:"result"`
+	Message   string      `json:"msg"`
 }
-
-// type Response struct {
-// 	Data data `json:"data"`
-// }
 
 type LoginResponse struct {
 	AccountId string `json:"accountId"`
